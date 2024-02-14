@@ -129,6 +129,8 @@ import (
 	blocksdkabci "github.com/skip-mev/block-sdk/abci"
 	"github.com/skip-mev/block-sdk/abci/checktx"
 	"github.com/skip-mev/block-sdk/block/utils"
+
+	"github.com/osmosis-labs/osmosis/v25/mamoru_cosmos_sdk"
 )
 
 const appName = "OsmosisApp"
@@ -563,6 +565,11 @@ func NewOsmosisApp(
 			tmos.Exit(fmt.Sprintf("failed initialize pinned codes %s", err))
 		}
 	}
+
+	////////////////////////// Mamoru //////////////////////////
+	streamService := mamoru_cosmos_sdk.NewStreamingService(logger, mamoru_cosmos_sdk.NewSniffer(logger))
+	bApp.SetStreamingService(streamService)
+	/////////////////////////// Mamoru //////////////////////////
 
 	return app
 }
