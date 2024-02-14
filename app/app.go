@@ -116,6 +116,8 @@ import (
 	v9 "github.com/osmosis-labs/osmosis/v24/app/upgrades/v9"
 	_ "github.com/osmosis-labs/osmosis/v24/client/docs/statik"
 	"github.com/osmosis-labs/osmosis/v24/x/mint"
+
+	"github.com/osmosis-labs/osmosis/v24/mamoru_cosmos_sdk"
 )
 
 const appName = "OsmosisApp"
@@ -453,6 +455,11 @@ func NewOsmosisApp(
 			tmos.Exit(fmt.Sprintf("failed initialize pinned codes %s", err))
 		}
 	}
+
+	////////////////////////// Mamoru //////////////////////////
+	streamService := mamoru_cosmos_sdk.NewStreamingService(logger, mamoru_cosmos_sdk.NewSniffer(logger))
+	bApp.SetStreamingService(streamService)
+	/////////////////////////// Mamoru //////////////////////////
 
 	return app
 }
