@@ -1,0 +1,70 @@
+name: Build Test
+
+on:
+  push:
+    branches:
+      - 'mamoru*'
+      - develop
+
+
+  pull_request:
+    branches:
+      - 'mamoru*'
+      - develop
+
+env:
+  GO_VERSION: '1.20.x'
+
+jobs:
+  golangci:
+    name: Run golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+      - uses: technote-space/get-diff-action@v6.1.2
+        with:
+          PATTERNS: |
+            **/**.go
+            go.mod
+            go.sum
+            .github/**
+            Makefile
+      - name: 🐿 Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{env.GO_VERSION}}
+
+      - name: Run golangci-lint
+        if: env.GIT_DIFF
+        run: make lint-all
+
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{env.GO_VERSION}}
+
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - uses: actions/cache@v3
+      with:
+        # In order:
+        # * Module download cache
+        # * Build cache (Linux)
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Test Build
+      run: |
+        go mod download
+        GOWRK=off go build cmd/osmosisd/main.go
+
+

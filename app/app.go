@@ -219,6 +219,14 @@ func NewOsmosisApp(
 	bApp.SetVersion(version.Version)
 	bApp.SetInterfaceRegistry(interfaceRegistry)
 
+	////////////////////////// Mamoru //////////////////////////
+	//mamoru_cosmos_sdk.InitConnectFunc(func() (*cosmos.SnifferCosmos, error) {
+	//	return nil, fmt.Errorf("not implemented")
+	//})
+	_ = mamoru_cosmos_sdk.NewMockStreamingService(logger)
+	//bApp.SetStreamingService(mamoru_cosmos_sdk.NewMockStreamingService(logger))
+	/////////////////////////// Mamoru //////////////////////////
+
 	app := &OsmosisApp{
 		AppKeepers:        keepers.AppKeepers{},
 		BaseApp:           bApp,

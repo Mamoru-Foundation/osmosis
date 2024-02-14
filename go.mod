@@ -414,3 +414,11 @@ exclude github.com/coinbase/rosetta-sdk-go v0.7.9
 exclude github.com/cosmos/cosmos-sdk v0.50.1
 
 exclude github.com/cometbft/cometbft v0.38.0
+
+//require github.com/Mamoru-Foundation/mamoru-cosmos-sdk v0.0.0
+//
+//replace github.com/Mamoru-Foundation/mamoru-cosmos-sdk v0.0.0 => ../mamoru-cosmos-sdk
+
+//replace github.com/Mamoru-Foundation/mamoru-sniffer-go v0.11.1 => ../mamoru-sniffer-go
+
+require github.com/Mamoru-Foundation/mamoru-sniffer-go v0.11.1
