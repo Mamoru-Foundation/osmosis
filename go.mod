@@ -221,7 +221,7 @@ require (
 	github.com/fzipp/gocyclo v0.6.0 // indirect
 	github.com/go-critic/go-critic v0.11.1 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
-	github.com/go-kit/log v0.2.1 // indirect
+	github.com/go-kit/log v0.2.1
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-toolsmith/astcast v1.1.0 // indirect
 	github.com/go-toolsmith/astcopy v1.1.0 // indirect
@@ -420,3 +420,8 @@ exclude github.com/coinbase/rosetta-sdk-go v0.7.9
 exclude github.com/cosmos/cosmos-sdk v0.50.1
 
 exclude github.com/cometbft/cometbft v0.38.0
+
+require (
+	github.com/Mamoru-Foundation/mamoru-sniffer-go v0.13.0
+	gotest.tools/v3 v3.5.1
+)
