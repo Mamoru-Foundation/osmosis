@@ -421,4 +421,7 @@ exclude github.com/cometbft/cometbft v0.38.0
 
 //replace github.com/Mamoru-Foundation/mamoru-sniffer-go v0.11.1 => ../mamoru-sniffer-go
 
-require github.com/Mamoru-Foundation/mamoru-sniffer-go v0.11.1
+require (
+	github.com/Mamoru-Foundation/mamoru-sniffer-go v0.11.1
+	gotest.tools/v3 v3.5.1
+)

@@ -106,6 +106,8 @@ import (
 	_ "github.com/osmosis-labs/osmosis/v23/client/docs/statik"
 	"github.com/osmosis-labs/osmosis/v23/ingest"
 	"github.com/osmosis-labs/osmosis/v23/x/mint"
+
+	"github.com/osmosis-labs/osmosis/v23/mamoru_cosmos_sdk"
 )
 
 const appName = "OsmosisApp"
@@ -223,8 +225,8 @@ func NewOsmosisApp(
 	//mamoru_cosmos_sdk.InitConnectFunc(func() (*cosmos.SnifferCosmos, error) {
 	//	return nil, fmt.Errorf("not implemented")
 	//})
-	_ = mamoru_cosmos_sdk.NewMockStreamingService(logger)
-	//bApp.SetStreamingService(mamoru_cosmos_sdk.NewMockStreamingService(logger))
+	streamService := mamoru_cosmos_sdk.NewMockStreamingService(logger)
+	bApp.SetStreamingService(streamService)
 	/////////////////////////// Mamoru //////////////////////////
 
 	app := &OsmosisApp{
