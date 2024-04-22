@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"github.com/osmosis-labs/osmosis/v23/mamoru_cosmos_sdk"
 	"io"
 	"net/http"
 	"os"
@@ -106,8 +107,6 @@ import (
 	_ "github.com/osmosis-labs/osmosis/v23/client/docs/statik"
 	"github.com/osmosis-labs/osmosis/v23/ingest"
 	"github.com/osmosis-labs/osmosis/v23/x/mint"
-
-	"github.com/osmosis-labs/osmosis/v23/mamoru_cosmos_sdk"
 )
 
 const appName = "OsmosisApp"
@@ -220,14 +219,6 @@ func NewOsmosisApp(
 	bApp.SetCommitMultiStoreTracer(traceStore)
 	bApp.SetVersion(version.Version)
 	bApp.SetInterfaceRegistry(interfaceRegistry)
-
-	////////////////////////// Mamoru //////////////////////////
-	//mamoru_cosmos_sdk.InitConnectFunc(func() (*cosmos.SnifferCosmos, error) {
-	//	return nil, fmt.Errorf("not implemented")
-	//})
-	streamService := mamoru_cosmos_sdk.NewMockStreamingService(logger)
-	bApp.SetStreamingService(streamService)
-	/////////////////////////// Mamoru //////////////////////////
 
 	app := &OsmosisApp{
 		AppKeepers:        keepers.AppKeepers{},
@@ -416,6 +407,11 @@ func NewOsmosisApp(
 			tmos.Exit(fmt.Sprintf("failed initialize pinned codes %s", err))
 		}
 	}
+
+	////////////////////////// Mamoru //////////////////////////
+	streamService := mamoru_cosmos_sdk.NewStreamingService(logger, mamoru_cosmos_sdk.NewSniffer(logger))
+	bApp.SetStreamingService(streamService)
+	/////////////////////////// Mamoru //////////////////////////
 
 	return app
 }

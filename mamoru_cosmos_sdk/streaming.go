@@ -2,32 +2,37 @@ package mamoru_cosmos_sdk
 
 import (
 	"context"
+	"encoding/hex"
+	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/cometbft/cometbft/libs/bytes"
+	"github.com/cometbft/cometbft/libs/log"
+	types2 "github.com/cometbft/cometbft/types"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/Mamoru-Foundation/mamoru-sniffer-go/mamoru_sniffer/cosmos"
-	abci "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/libs/log"
+
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/store/types"
-	store "github.com/cosmos/cosmos-sdk/store/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
 
 var _ baseapp.StreamingService = (*StreamingService)(nil)
 
 type StreamingService struct {
-	logger             log.Logger
+	logger log.Logger
+
 	blockMetadata      types.BlockMetadata
 	currentBlockNumber int64
-	storeListeners     []*types.MemoryListener
 
-	sniffer SnifferI
+	storeListeners []*types.MemoryListener
+
+	sniffer *Sniffer
 }
 
-func NewStreamingService(logger log.Logger, sniffer SnifferI) *StreamingService {
-	logger.Info("Mamoru MockStreamingService start")
+func NewStreamingService(logger log.Logger, sniffer *Sniffer) *StreamingService {
+	logger.Info("Mamoru StreamingService start")
 
 	return &StreamingService{
 		sniffer: sniffer,
@@ -46,11 +51,11 @@ func (ss *StreamingService) ListenBeginBlock(ctx context.Context, req abci.Reque
 }
 
 func (ss *StreamingService) ListenDeliverTx(ctx context.Context, req abci.RequestDeliverTx, res abci.ResponseDeliverTx) error {
+	ss.logger.Info("Mamoru ListenDeliverTx", "height", ss.currentBlockNumber)
 	ss.blockMetadata.DeliverTxs = append(ss.blockMetadata.DeliverTxs, &types.BlockMetadata_DeliverTx{
 		Request:  &req,
 		Response: &res,
 	})
-	ss.logger.Info("Mamoru ListenDeliverTx", "height", ss.currentBlockNumber)
 
 	return nil
 }
@@ -64,36 +69,39 @@ func (ss *StreamingService) ListenEndBlock(ctx context.Context, req abci.Request
 }
 
 func (ss *StreamingService) ListenCommit(ctx context.Context, res abci.ResponseCommit) error {
-	ss.blockMetadata.ResponseCommit = &res
-	ss.logger.Info("Mamoru ListenCommit", "height", ss.currentBlockNumber, "res", res.String())
-
 	if ss.sniffer == nil || !ss.sniffer.CheckRequirements() {
 		return nil
 	}
 
+	ss.blockMetadata.ResponseCommit = &res
+	ss.logger.Info("Mamoru ListenCommit", "height", ss.currentBlockNumber)
+
+	var eventCount uint64 = 0
+	var txCount uint64 = 0
+	var callTracesCount uint64 = 0
 	builder := cosmos.NewCosmosCtxBuilder()
 
 	blockHeight := uint64(ss.blockMetadata.RequestEndBlock.Height)
 	block := cosmos.Block{
 		Seq:                           blockHeight,
 		Height:                        ss.blockMetadata.RequestEndBlock.Height,
-		Hash:                          ss.blockMetadata.RequestBeginBlock.Hash,
+		Hash:                          hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Hash),
 		VersionBlock:                  ss.blockMetadata.RequestBeginBlock.Header.Version.Block,
 		VersionApp:                    ss.blockMetadata.RequestBeginBlock.Header.Version.App,
 		ChainId:                       ss.blockMetadata.RequestBeginBlock.Header.ChainID,
 		Time:                          ss.blockMetadata.RequestBeginBlock.Header.Time.Unix(),
-		LastBlockIdHash:               ss.blockMetadata.RequestBeginBlock.Header.LastBlockId.Hash,
+		LastBlockIdHash:               hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.LastBlockId.Hash),
 		LastBlockIdPartSetHeaderTotal: ss.blockMetadata.RequestBeginBlock.Header.LastBlockId.PartSetHeader.Total,
-		LastBlockIdPartSetHeaderHash:  ss.blockMetadata.RequestBeginBlock.Header.LastBlockId.PartSetHeader.Hash,
-		LastCommitHash:                ss.blockMetadata.RequestBeginBlock.Header.LastCommitHash,
-		DataHash:                      ss.blockMetadata.RequestBeginBlock.Header.DataHash,
-		ValidatorsHash:                ss.blockMetadata.RequestBeginBlock.Header.ValidatorsHash,
-		NextValidatorsHash:            ss.blockMetadata.RequestBeginBlock.Header.NextValidatorsHash,
-		ConsensusHash:                 ss.blockMetadata.RequestBeginBlock.Header.ConsensusHash,
-		AppHash:                       ss.blockMetadata.RequestBeginBlock.Header.AppHash,
-		LastResultsHash:               ss.blockMetadata.RequestBeginBlock.Header.LastResultsHash,
-		EvidenceHash:                  ss.blockMetadata.RequestBeginBlock.Header.EvidenceHash,
-		ProposerAddress:               ss.blockMetadata.RequestBeginBlock.Header.ProposerAddress,
+		LastBlockIdPartSetHeaderHash:  hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.LastBlockId.PartSetHeader.Hash),
+		LastCommitHash:                hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.LastCommitHash),
+		DataHash:                      hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.DataHash),
+		ValidatorsHash:                hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.ValidatorsHash),
+		NextValidatorsHash:            hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.NextValidatorsHash),
+		ConsensusHash:                 hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.ConsensusHash),
+		AppHash:                       hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.AppHash),
+		LastResultsHash:               hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.LastResultsHash),
+		EvidenceHash:                  hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.EvidenceHash),
+		ProposerAddress:               hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Header.ProposerAddress),
 		LastCommitInfoRound:           ss.blockMetadata.RequestBeginBlock.LastCommitInfo.Round,
 	}
 
@@ -104,17 +112,50 @@ func (ss *StreamingService) ListenCommit(ctx context.Context, res abci.ResponseC
 		block.ConsensusParamUpdatesEvidenceMaxAgeDuration = ss.blockMetadata.ResponseEndBlock.ConsensusParamUpdates.Evidence.MaxAgeDuration.Milliseconds()
 		block.ConsensusParamUpdatesEvidenceMaxBytes = ss.blockMetadata.ResponseEndBlock.ConsensusParamUpdates.Evidence.MaxBytes
 		block.ConsensusParamUpdatesValidatorPubKeyTypes = strings.Join(ss.blockMetadata.ResponseEndBlock.ConsensusParamUpdates.Validator.PubKeyTypes[:], ",") //todo  []string to string
-		block.ConsensusParamUpdatesVersionApp = ss.blockMetadata.ResponseEndBlock.ConsensusParamUpdates.Version.App
+		block.ConsensusParamUpdatesVersionApp = ss.blockMetadata.ResponseEndBlock.ConsensusParamUpdates.Version.GetApp()
 	}
 
 	builder.SetBlock(block)
+
+	for _, beginBlock := range ss.blockMetadata.ResponseBeginBlock.Events {
+		eventCount++
+		builder.AppendEvents([]cosmos.Event{
+			{
+				Seq:       blockHeight,
+				EventType: beginBlock.Type,
+			},
+		})
+		for _, attribute := range beginBlock.Attributes {
+			builder.AppendEventAttributes([]cosmos.EventAttribute{
+				{
+					Seq:      blockHeight,
+					EventSeq: blockHeight,
+					Key:      string(attribute.Key),
+					Value:    string(attribute.Value),
+					Index:    attribute.Index,
+				},
+			})
+		}
+	}
 
 	for _, validatorUpdate := range ss.blockMetadata.ResponseEndBlock.ValidatorUpdates {
 		builder.AppendValidatorUpdates([]cosmos.ValidatorUpdate{
 			{
 				Seq:    blockHeight,
-				PubKey: validatorUpdate.PubKey.GetSecp256K1(),
+				PubKey: validatorUpdate.PubKey.GetEd25519(),
 				Power:  validatorUpdate.Power,
+			},
+		})
+	}
+
+	for _, voteInfo := range ss.blockMetadata.RequestBeginBlock.LastCommitInfo.Votes {
+		builder.AppendVoteInfos([]cosmos.VoteInfo{
+			{
+				Seq:              blockHeight,
+				BlockSeq:         blockHeight,
+				ValidatorAddress: sdktypes.ValAddress(voteInfo.Validator.Address).String(),
+				ValidatorPower:   voteInfo.Validator.Power,
+				SignedLastBlock:  voteInfo.SignedLastBlock,
 			},
 		})
 	}
@@ -134,18 +175,51 @@ func (ss *StreamingService) ListenCommit(ctx context.Context, res abci.ResponseC
 		})
 	}
 
-	for _, tx := range ss.blockMetadata.DeliverTxs {
+	for txIndex, tx := range ss.blockMetadata.DeliverTxs {
+		txHash := bytes.HexBytes(types2.Tx(tx.Request.Tx).Hash()).String()
 		builder.AppendTxs([]cosmos.Transaction{
 			{
-				Seq:  blockHeight,
-				Tx:   tx.Request.Tx,
-				Code: tx.Response.Code,
-				Data: tx.Response.Data,
+				Seq:       blockHeight,
+				Tx:        tx.Request.Tx,
+				TxHash:    txHash,
+				TxIndex:   uint32(txIndex),
+				Code:      tx.Response.Code,
+				Data:      tx.Response.Data,
+				Log:       tx.Response.Log,
+				Info:      tx.Response.Info,
+				GasWanted: tx.Response.GasWanted,
+				GasUsed:   tx.Response.GasUsed,
+				Codespace: tx.Response.Codespace,
 			},
 		})
+
+		for _, event := range tx.Response.Events {
+			eventCount++
+			builder.AppendEvents([]cosmos.Event{
+				{
+					Seq:       blockHeight,
+					EventType: event.Type,
+				},
+			})
+
+			for _, attribute := range event.Attributes {
+				builder.AppendEventAttributes([]cosmos.EventAttribute{
+					{
+						Seq:      blockHeight,
+						EventSeq: blockHeight,
+						Key:      string(attribute.Key),
+						Value:    string(attribute.Value),
+						Index:    attribute.Index,
+					},
+				})
+			}
+		}
+
+		txCount++
 	}
 
 	for _, event := range ss.blockMetadata.ResponseEndBlock.Events {
+		eventCount++
 		builder.AppendEvents([]cosmos.Event{
 			{
 				Seq:       blockHeight,
@@ -157,22 +231,26 @@ func (ss *StreamingService) ListenCommit(ctx context.Context, res abci.ResponseC
 				{
 					Seq:      blockHeight,
 					EventSeq: blockHeight,
-					Key:      attribute.Key,
-					Value:    attribute.Value,
+					Key:      string(attribute.Key),
+					Value:    string(attribute.Value),
 					Index:    attribute.Index,
 				},
 			})
 		}
 	}
 
-	builder.SetBlockData(strconv.FormatUint(blockHeight, 10), string(ss.blockMetadata.RequestBeginBlock.Hash))
-	statTxs := uint64(len(ss.blockMetadata.DeliverTxs))
-	statEvn := uint64(len(ss.blockMetadata.ResponseEndBlock.Events))
-	builder.SetStatistics(uint64(1), statTxs, statEvn, 0)
+	builder.SetBlockData(strconv.FormatUint(blockHeight, 10), hex.EncodeToString(ss.blockMetadata.RequestBeginBlock.Hash))
+
+	statTxs := txCount
+	statEvn := eventCount
+	eventCount = 0
+	txCount = 0
+
+	builder.SetStatistics(uint64(1), statTxs, statEvn, callTracesCount)
 
 	cosmosCtx := builder.Finish()
 
-	ss.logger.Info("Mamoru Send", "height", ss.currentBlockNumber)
+	ss.logger.Info("Mamoru Send", "height", ss.currentBlockNumber, "txs", statTxs, "events", statEvn, "callTraces", callTracesCount)
 
 	if client := ss.sniffer.Client(); client != nil {
 		client.ObserveCosmosData(cosmosCtx)
@@ -185,7 +263,7 @@ func (ss *StreamingService) Stream(wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (ss *StreamingService) Listeners() map[store.StoreKey][]store.WriteListener {
+func (ss *StreamingService) Listeners() map[types.StoreKey][]types.WriteListener {
 	listeners := make(map[types.StoreKey][]types.WriteListener, len(ss.storeListeners))
 	//for _, listener := range ss.storeListeners {
 	//	listeners[listener.StoreKey()] = []types.WriteListener{listener}

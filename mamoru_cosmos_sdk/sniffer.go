@@ -1,14 +1,23 @@
 package mamoru_cosmos_sdk
 
 import (
+	"fmt"
+	"github.com/cometbft/cometbft/libs/log"
+	"github.com/osmosis-labs/osmosis/v23/mamoru_cosmos_sdk/sync_state"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
+
+	"github.com/go-kit/log/level"
+	"github.com/go-kit/log/term"
 
 	"github.com/Mamoru-Foundation/mamoru-sniffer-go/mamoru_sniffer"
 	"github.com/Mamoru-Foundation/mamoru-sniffer-go/mamoru_sniffer/cosmos"
-	"github.com/cometbft/cometbft/libs/log"
+)
+
+const (
+	PolishTimeSec   = 10
+	DefaultTNApiUrl = "http://localhost:26657/status"
 )
 
 var snifferConnectFunc = cosmos.CosmosConnect
@@ -17,14 +26,24 @@ func InitConnectFunc(f func() (*cosmos.SnifferCosmos, error)) {
 	snifferConnectFunc = f
 }
 
-//
-
 func init() {
-
 	mamoru_sniffer.InitLogger(func(entry mamoru_sniffer.LogEntry) {
 		kvs := mapToInterfaceSlice(entry.Ctx)
 		msg := "Mamoru core: " + entry.Message
-		var tmLogger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+		var tmLogger = log.NewTMLoggerWithColorFn(os.Stdout, func(keyvals ...interface{}) term.FgBgColor {
+			if keyvals[0] != level.Key() {
+				panic(fmt.Sprintf("expected level key to be first, got %v", keyvals[0]))
+			}
+			switch keyvals[1].(level.Value).String() {
+			case "debug":
+				return term.FgBgColor{Fg: term.Green}
+			case "error":
+				return term.FgBgColor{Fg: term.DarkRed}
+			default:
+				return term.FgBgColor{}
+			}
+		})
+
 		switch entry.Level {
 		case mamoru_sniffer.LogLevelDebug:
 			tmLogger.Debug(msg, kvs...)
@@ -47,42 +66,33 @@ func mapToInterfaceSlice(m map[string]string) []interface{} {
 	return result
 }
 
-type SnifferI interface {
-	CheckRequirements() bool
-	Client() *cosmos.SnifferCosmos
-}
-
-var _ SnifferI = (*Sniffer)(nil)
-
 type Sniffer struct {
 	mu     sync.Mutex
 	logger log.Logger
 	client *cosmos.SnifferCosmos
+	sync   *sync_state.Client
 }
 
 func NewSniffer(logger log.Logger) *Sniffer {
+	tmApiUrl := getEnv("MAMORU_TM_API_URL", DefaultTNApiUrl)
+	httpClient := sync_state.NewHTTPRequest(logger, tmApiUrl, PolishTimeSec, isSnifferEnabled())
+
 	return &Sniffer{
 		logger: logger,
+		sync:   httpClient,
 	}
 }
 
-func (s *Sniffer) isSnifferEnable() bool {
-	val, ok := os.LookupEnv("MAMORU_SNIFFER_ENABLE")
-	if !ok {
-		return false
-	}
+// IsSynced returns true if the sniffer is synced with the chain
+func (s *Sniffer) IsSynced() bool {
+	s.logger.Info("Mamoru Sniffer sync", "sync", s.sync.GetSyncData().IsSync(),
+		"block", s.sync.GetSyncData().GetCurrentBlockNumber())
 
-	isEnable, err := strconv.ParseBool(val)
-	if err != nil {
-		s.logger.Error("Mamoru Sniffer env parse error", "err", err)
-		return false
-	}
-
-	return isEnable
+	return s.sync.GetSyncData().IsSync()
 }
 
 func (s *Sniffer) CheckRequirements() bool {
-	return s.isSnifferEnable() && s.connect()
+	return isSnifferEnabled() && s.IsSynced() && s.connect()
 }
 
 func (s *Sniffer) Client() *cosmos.SnifferCosmos {
@@ -100,11 +110,21 @@ func (s *Sniffer) connect() bool {
 	var err error
 	s.client, err = snifferConnectFunc()
 	if err != nil {
-		erst := strings.Replace(err.Error(), "\t", "", -1)
-		erst = strings.Replace(erst, "\n", "", -1)
-		s.logger.Error("Mamoru Sniffer connect", "err", erst)
+		s.logger.Error("Mamoru Sniffer connect", "err", err)
 		return false
 	}
 
 	return true
+}
+
+func isSnifferEnabled() bool {
+	val, _ := strconv.ParseBool(getEnv("MAMORU_SNIFFER_ENABLE", "false"))
+	return val
+}
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }

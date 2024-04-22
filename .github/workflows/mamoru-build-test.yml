@@ -65,6 +65,7 @@ jobs:
     - name: Test Build
       run: |
         go mod download
-        GOWRK=off go build cmd/osmosisd/main.go
+        make build 
+
 
 

@@ -39,7 +39,7 @@ func NewMockStreamingService(logger log.Logger) *MockStreamingService {
 }
 
 func (ss *MockStreamingService) ListenBeginBlock(ctx context.Context, req abci.RequestBeginBlock, res abci.ResponseBeginBlock) error {
-	ss.currentBlockNumber = 1 //req.Header.Height
+	ss.currentBlockNumber = req.Header.Height
 	ss.logger.Info("Mamoru Mock ListenBeginBlock", "height", ss.currentBlockNumber)
 
 	return nil
