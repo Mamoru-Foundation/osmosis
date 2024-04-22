@@ -2,8 +2,6 @@ package mamoru_cosmos_sdk
 
 import (
 	"fmt"
-	"github.com/cometbft/cometbft/libs/log"
-	"github.com/osmosis-labs/osmosis/v23/mamoru_cosmos_sdk/sync_state"
 	"os"
 	"strconv"
 	"sync"
@@ -13,6 +11,9 @@ import (
 
 	"github.com/Mamoru-Foundation/mamoru-sniffer-go/mamoru_sniffer"
 	"github.com/Mamoru-Foundation/mamoru-sniffer-go/mamoru_sniffer/cosmos"
+
+	"github.com/cometbft/cometbft/libs/log"
+	"github.com/osmosis-labs/osmosis/v23/mamoru_cosmos_sdk/sync_state"
 )
 
 const (
@@ -34,14 +35,17 @@ func init() {
 			if keyvals[0] != level.Key() {
 				panic(fmt.Sprintf("expected level key to be first, got %v", keyvals[0]))
 			}
-			switch keyvals[1].(level.Value).String() {
-			case "debug":
-				return term.FgBgColor{Fg: term.Green}
-			case "error":
-				return term.FgBgColor{Fg: term.DarkRed}
-			default:
-				return term.FgBgColor{}
+			if val, ok := keyvals[1].(level.Value); ok {
+				switch val.String() {
+				case "debug":
+					return term.FgBgColor{Fg: term.Green}
+				case "error":
+					return term.FgBgColor{Fg: term.DarkRed}
+				default:
+					return term.FgBgColor{}
+				}
 			}
+			return term.FgBgColor{}
 		})
 
 		switch entry.Level {

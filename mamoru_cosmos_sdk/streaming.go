@@ -3,16 +3,16 @@ package mamoru_cosmos_sdk
 import (
 	"context"
 	"encoding/hex"
-	abci "github.com/cometbft/cometbft/abci/types"
-	"github.com/cometbft/cometbft/libs/bytes"
-	"github.com/cometbft/cometbft/libs/log"
-	types2 "github.com/cometbft/cometbft/types"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/Mamoru-Foundation/mamoru-sniffer-go/mamoru_sniffer/cosmos"
 
+	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/cometbft/cometbft/libs/bytes"
+	"github.com/cometbft/cometbft/libs/log"
+	types2 "github.com/cometbft/cometbft/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/store/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -130,8 +130,8 @@ func (ss *StreamingService) ListenCommit(ctx context.Context, res abci.ResponseC
 				{
 					Seq:      blockHeight,
 					EventSeq: blockHeight,
-					Key:      string(attribute.Key),
-					Value:    string(attribute.Value),
+					Key:      attribute.Key,
+					Value:    attribute.Value,
 					Index:    attribute.Index,
 				},
 			})
@@ -207,8 +207,8 @@ func (ss *StreamingService) ListenCommit(ctx context.Context, res abci.ResponseC
 					{
 						Seq:      blockHeight,
 						EventSeq: blockHeight,
-						Key:      string(attribute.Key),
-						Value:    string(attribute.Value),
+						Key:      attribute.Key,
+						Value:    attribute.Value,
 						Index:    attribute.Index,
 					},
 				})
@@ -231,8 +231,8 @@ func (ss *StreamingService) ListenCommit(ctx context.Context, res abci.ResponseC
 				{
 					Seq:      blockHeight,
 					EventSeq: blockHeight,
-					Key:      string(attribute.Key),
-					Value:    string(attribute.Value),
+					Key:      attribute.Key,
+					Value:    attribute.Value,
 					Index:    attribute.Index,
 				},
 			})
@@ -243,8 +243,6 @@ func (ss *StreamingService) ListenCommit(ctx context.Context, res abci.ResponseC
 
 	statTxs := txCount
 	statEvn := eventCount
-	eventCount = 0
-	txCount = 0
 
 	builder.SetStatistics(uint64(1), statTxs, statEvn, callTracesCount)
 

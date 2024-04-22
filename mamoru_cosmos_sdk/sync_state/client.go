@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/cometbft/cometbft/libs/log"
 	"io"
 	"net/http"
 	"os"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/cometbft/cometbft/libs/log"
 )
 
 type JSONRPCResponse struct {
@@ -146,8 +147,6 @@ func (c *Client) loop() {
 }
 
 func (c *Client) fetchSyncStatus() {
-
-	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

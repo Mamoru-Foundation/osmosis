@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"github.com/osmosis-labs/osmosis/v23/mamoru_cosmos_sdk"
 	"io"
 	"net/http"
 	"os"
@@ -107,6 +106,8 @@ import (
 	_ "github.com/osmosis-labs/osmosis/v23/client/docs/statik"
 	"github.com/osmosis-labs/osmosis/v23/ingest"
 	"github.com/osmosis-labs/osmosis/v23/x/mint"
+
+	"github.com/osmosis-labs/osmosis/v23/mamoru_cosmos_sdk"
 )
 
 const appName = "OsmosisApp"
