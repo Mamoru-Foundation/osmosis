@@ -29,6 +29,13 @@ jobs:
         id: date
         run: echo "::set-output name=date::$(date -u +'%Y-%m-%d')"
 
+      - name: Available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+
+      - name: Set architecture variable
+        id: set_arch
+        run: echo "::set-output name=arch::$(uname -m)"
+
       - name: Build and push
         uses: docker/build-push-action@v3
         with:

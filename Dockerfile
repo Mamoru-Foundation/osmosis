@@ -2,7 +2,7 @@
 
 ARG GO_VERSION="1.21"
 ARG RUNNER_IMAGE="gcr.io/distroless/static-debian11"
-ARG BUILD_TAGS="netgo,ledger,static_wasm"
+ARG BUILD_TAGS="netgo,ledger"
 
 # --------------------------------------------------------
 # Builder
@@ -31,12 +31,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 
 # Cosmwasm - Download correct libwasmvm version
-RUN ARCH=$(uname -m) && WASMVM_VERSION=$(go list -m github.com/CosmWasm/wasmvm | sed 's/.* //') && \
+RUN ARCH=$(uname -m) && WASMVM_VERSION=v1.5.2 && \
     wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/libwasmvm.$ARCH.so \
-    -O /lib/libwasmvm.so && \
+    -O /tmp/libwasmvm.$ARCH.so && \
     # verify checksum
     wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/checksums.txt -O /tmp/checksums.txt && \
-    sha256sum /lib/libwasmvm.so | grep $(cat /tmp/checksums.txt | grep libwasmvm.$ARCH.so | cut -d ' ' -f 1)
+    sha256sum /tmp/libwasmvm.$ARCH.so | grep $(cat /tmp/checksums.txt | grep libwasmvm.$ARCH.so | cut -d ' ' -f 1)
 
 # Copy the remaining files
 COPY . .
@@ -46,14 +46,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/root/go/pkg/mod \
     GOWORK=off go build \
     -mod=readonly \
-    -tags "netgo,ledger,muslc" \
+    -tags "netgo,ledger" \
     -ldflags \
     "-X github.com/cosmos/cosmos-sdk/version.Name="osmosis" \
     -X github.com/cosmos/cosmos-sdk/version.AppName="osmosisd" \
     -X github.com/cosmos/cosmos-sdk/version.Version=${GIT_VERSION} \
     -X github.com/cosmos/cosmos-sdk/version.Commit=${GIT_COMMIT} \
     -X github.com/cosmos/cosmos-sdk/version.BuildTags=${BUILD_TAGS} \
-    -w -s -linkmode=external -extldflags '-Wl,-z'" \
+    -w -s -linkmode=external -extldflags '-Wl,-z,muldefs '" \
     -trimpath \
     -o /osmosis/build/osmosisd \
     /osmosis/cmd/osmosisd/main.go
@@ -65,6 +65,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 #FROM ${RUNNER_IMAGE}
 FROM debian:12.0-slim
 
+ENV LD_LIBRARY_PATH="/usr/local/lib"
 RUN touch /var/run/supervisor.sock
 
 RUN apt-get update  \
@@ -72,13 +73,9 @@ RUN apt-get update  \
     && apt-get clean
 
 
-# Cosmwasm - Download correct libwasmvm version
-RUN ARCH=$(uname -m) && WASMVM_VERSION=v1.5.2 && \
-    wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/libwasmvm.$ARCH.so \
-    -O /lib/libwasmvm.$ARCH.so && \
-    # verify checksum
-    wget https://github.com/CosmWasm/wasmvm/releases/download/$WASMVM_VERSION/checksums.txt -O /tmp/checksums.txt && \
-    sha256sum /lib/libwasmvm.$ARCH.so | grep $(cat /tmp/checksums.txt | grep libwasmvm.$ARCH.so | cut -d ' ' -f 1)
+COPY --from=builder /tmp/libwasmvm.*.so /tmp
+RUN  cp /tmp/libwasmvm.*.so /usr/local/lib/. && \
+     rm /tmp/libwasmvm.*.so
 
 COPY --from=builder /osmosis/build/osmosisd /bin/osmosisd
 
