@@ -423,6 +423,6 @@ exclude github.com/cosmos/cosmos-sdk v0.50.1
 exclude github.com/cometbft/cometbft v0.38.0
 
 require (
-	github.com/Mamoru-Foundation/mamoru-sniffer-go v0.13.5
+	github.com/Mamoru-Foundation/mamoru-sniffer-go v0.13.7
 	gotest.tools/v3 v3.5.1
 )
